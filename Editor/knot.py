@@ -1,9 +1,20 @@
 # !/usr/bin/python3
 # knot.py
 
-from enums import *
-from utils import *
-from cell import Cell
+try:
+   from enums import *
+   local = True
+except ModuleNotFoundError as e:
+   local = False
+if local:
+   from utils import *
+   # noinspection PyUnresolvedReferences
+   from cell import Cell
+else:
+   from Editor.enums import *
+   from Editor.utils import *
+   from Editor.cell import Cell
+
 
 class Knot:
 
@@ -38,7 +49,7 @@ class Knot:
       # setting neightbours - used by change wall
       for y in range(self.height):
          for x in range(self.width):
-            cell = self.cell(x,y)
+            cell = self.cell(x, y)
             if self.isValidY(y - 1):
                cell.setNeighbour(Direction.North, self.cell(x, y - 1))
             else:
@@ -58,7 +69,7 @@ class Knot:
       # setting symmetry cells - used by change wall if symmetry activated
       for y in range(self.height):
          for x in range(self.width):
-            cell = self.cell(x,y)
+            cell = self.cell(x, y)
             xmirror = self.width - x - 1
             ymirror = self.height - y - 1
             ### print("For", x, y, "Mirror", xmirror, ymirror)
@@ -78,114 +89,124 @@ class Knot:
                cell.setSymmetry(Symmetry.Rotate270, self.cell(y, xmirror))
       return
 
-   def cell(self, x, y):
-      if x < self.width and x >= 0:
-         if y < self.height and y >= 0:
+   def cell(self, x: int, y: int) -> Cell:
+      """
+      Validate that x and y are in the knot, and then return the relevant Cell
+      :param x: coordinate
+      :param y: coordinate
+      :return: Cell at (x,y)
+      """
+      if self.width > x >= 0:
+         if self.height > y >= 0:
             return self.cells[y][x]
          else:
             raise Exception("More rows than allowed: cell(" + str(x) + "," + str(y) + ")")
       else:
          raise Exception("Line longer than allowed row: cell(" + str(x) + "," + str(y) + ")")
 
-
-   def print(self):
-      # print the knot as unicode
-      # used to see the knot in debug, or display in textbox
-      knotCode = ""
+   def print(self) -> str:
+      """
+      Print the knot as unicode
+      Used to see the knot in debug, or display in textbox
+      :return: the knot as unicode
+      """
+      code = ""
       for y in range(self.height):
          for x in range(self.width):
-            knotCode += self.cell(x, y).print()
-         knotCode += "\n"
-      return knotCode
+            code += self.cell(x, y).print()
+         code += "\n"
+      return code
 
-   def show(self):
-      # show the knot as ligatures
-      # used the serialise the knot for load and save
-      knotCode = ""
+   def show(self) -> str:
+      """
+      Show the knot as ligatures
+      Used the serialise the knot for load and save
+      :return: the knot as ligatures
+      """
+      code = ""
       for y in range(self.height):
          for x in range(self.width):
-            knotCode += self.cell(x, y).show()
-         knotCode += "\n"
-      return knotCode
+            code += self.cell(x, y).show()
+         code += "\n"
+      return code
 
-   def set(self, ligatures):
-      upper = ligatures.upper()
+   def set(self, ligatures: str):
       x = 0
       y = 0
-      l = ""
-      for ch in upper:
+      ligs = ""
+      for ch in ligatures:
          if ch == "\n":
             # end of line start new row
-            if l != "":
+            if ligs != "":
                # add last cell
                try:
-                  self.cell(x, y).setWalls(l)
-               except Exception as e:
-                  raise Exception(str(e) + ' - "' + l + '"')
-            l = ""
+                  self.cell(x, y).setWalls(ligs)
+               except Exception as exc:
+                  raise Exception(str(exc) + ' - "' + ligs + '"')
+            ligs = ""
             x = 0
             y += 1
          else:
             try:
+               # use enum exception to validate ligature
+               # noinspection PyUnusedLocal
                test = Ligature[ch]
-               l += ch
-            except:
-               raise Exception("Invalid character ('" + ch + "') in cell(" + str(x) + "," + str(y) + ') - "' + l + ch + '"')
-            if len(l) == 4:
+               ligs += ch
+            except KeyError:
+               raise Exception("Invalid character ('" + ch + "') in cell(" + str(x) + "," + str(y) + ')'
+                               ' - "' + ligs + ch + '"')
+            if len(ligs) == 4:
                try:
-                  self.cell(x, y).setWalls(l)
-               except Exception as e:
-                  raise Exception(str(e) + ' - "' + l + '"')
-               l = ""
+                  self.cell(x, y).setWalls(ligs)
+               except Exception as exc:
+                  raise Exception(str(exc) + ' - "' + ligs + '"')
+               ligs = ""
                x += 1
       return
 
-   def load(ligatures):
+   def add(self, new: Symmetry):
+      if new & Symmetry.Rotate90:
+         self.remove(Symmetry.Rotate180)  # exclusive 90 & 180
+      if new & Symmetry.Rotate180:
+         self.remove(Symmetry.Rotate90)   # exclusive 90 & 180
+      self.symmetry |= new
+      return
+
+   def remove(self, old: Symmetry):
+      self.symmetry &= ~old
+      return
+
+   @staticmethod
+   def load(ligatures: str) -> 'Knot':
       width = 0
       height = 0
       x = 0
-      l = 0
+      ligs = 0
       for ch in ligatures:
          if ch == "\n":
             # end of line start new row
-            if l > 0:
+            if ligs > 0:
                # count last cell
                x += 1
             width = max(width, x)
             x = 0
             height += 1
          else:
-            l += 1
-            if l == 4:
-               l = 0
+            ligs += 1
+            if ligs == 4:
+               ligs = 0
                x += 1
       # end of ligatures
-      if l > 0:
+      if ligs > 0:
          # count last cell
          x += 1
       width = max(width, x)
       if x > 0:
          # count last row
          height += 1
-      knot = Knot(width, height)
-      knot.set(ligatures)
-      return knot
-
-   def addSymmetry(self, newSymmetry):
-      if newSymmetry & Symmetry.Rotate90:
-         self.remove(Symmetry.Rotate180) # exclusive 90 & 180
-      if newSymmetry & Symmetry.Rotate180:
-         self.remove(Symmetry.Rotate90) # exclusive 90 & 180
-      self.symmetry |= newSymmetry
-      return
-
-   def removeSymmetry(self, oldSymmetry):
-      self.symmetry &= ~oldSymmetry
-      return
-
-   def expand(self, newWidth, newHeight):
-      print("Expand called with old:", self.width, ",", self.height, "- new:", newWidth, ",", newHeight)
-      return
+      new = Knot(width, height)
+      new.set(ligatures)
+      return new
 
 
 if __name__ == "__main__":
@@ -204,15 +225,14 @@ if __name__ == "__main__":
    print(knot.show())
    print("Knot print:")
    print(knot.print())
-   map = '''oooooooooxxoooxx
+   knotCode = '''oooooooooxxoooxx
 oxxooxixxxxxxoox
 xixoIIIIxoxi
 xxooixoxxxxxooxxoooooxxoooxx
 ooooooooxxooxxxxoxixxxxxxoox
 ooooooooooooxixoIIIIxoxioooo'''
-   knot = Knot.load(map)
+   knot = Knot.load(knotCode)
    print("Knot show:")
    print(knot.show())
    print("Knot print:")
    print(knot.print())
-

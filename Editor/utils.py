@@ -1,7 +1,16 @@
 # !/usr/bin/python3
 # utils.py
 
-from enums import *
+try:
+   # noinspection PyUnresolvedReferences
+   from enums import *
+   local = True
+except ModuleNotFoundError as e:
+   local = False
+if local:
+   pass
+else:
+   from Editor.enums import *
 
 from tkinter import *
 from tkinter import messagebox
@@ -75,41 +84,8 @@ def ligature2doorway(ch):
    l = Ligature[ch]
    return l.value 
 
-def Opposite(thing):
-   # also acts as rotate direction by 180 degrees
-   oppLig = {"O": "O", "I": "I", "X": "X", "H": "B", "B": "H", "o": "o", "i": "i", "x": "x", "h": "b", "b": "h"}
-   oppDoor = {Doorway.blocked: Doorway.blocked,
-              Doorway.crossed: Doorway.crossed,
-              Doorway.straight: Doorway.straight,
-              Doorway.head: Doorway.beak,
-              Doorway.beak: Doorway.head,
-              Doorway.removed: Doorway.removed,
-              Doorway.platted: Doorway.platted}
-   oppDir = {Direction.North: Direction.South,
-             Direction.East: Direction.West,
-             Direction.South: Direction.North,
-             Direction.West: Direction.East}
-   if isinstance(thing, Doorway):
-      # print("Opposite Doorway:", thing, oppDoor[thing])
-      return oppDoor[thing]
-   if isinstance(thing, Direction):
-      # print("Opposite Direction:", thing, oppDir[thing])
-      return oppDir[thing]
-   # print("Opposite Ligature:", thing, oppLig[thing])
-   return oppLig[thing]
-
-def Rotated(direction):
-   # rotate direction by 90 degrees
-   rotated = {Direction.North: Direction.East,
-              Direction.East: Direction.South,
-              Direction.South: Direction.West,
-              Direction.West: Direction.North}
-   return rotated[direction]
-
 
 if __name__ == "__main__":
    l = "OXIH"
    a = ligatures2unicode(l)
    print("test:", l, "->", a, "?", l == unicode2ligatures(a))
-   for d in Direction:
-      print("Dir:", d.name, "Op:", Opposite(d).name, "Rot:", Rotated(d).name, "Rot:Op:", Rotated(Opposite(d)).name, "either:", Rotated(Opposite(d)) == Opposite(Rotated(d)))

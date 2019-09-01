@@ -1,125 +1,163 @@
 # !/usr/bin/python3
 # knot.py
+from typing import Dict, TypeVar
 
-from enums import *
-from utils import *
+try:
+   # noinspection PyUnresolvedReferences
+   from enums import Direction, Symmetry
+   local = True
+except ModuleNotFoundError as e:
+   local = False
+if local:
+   from utils import *
+else:
+   from Editor.enums import Direction, Symmetry
+   from Editor.utils import *
+
 
 class Cell:
+
+   wall = TypeVar('wall', Doorway, type(None))
+   walls: Dict[Direction, wall]
+   cell = TypeVar('cell', 'Cell', type(None))
+   neighbours: Dict[Direction, cell]
+   symmetries: Dict[Symmetry, cell]
 
    def __init__(self, x, y):
       self.x = x
       self.y = y
       self.walls = {Direction.North: None, Direction.East: None, Direction.South: None, Direction.West: None}
       self.neighbours = {Direction.North: None, Direction.East: None, Direction.South: None, Direction.West: None}
-      self.symmetries = {Symmetry.Horizontal: None, Symmetry.Vertical: None, Symmetry.Rotate90: None, Symmetry.Rotate180: None, Symmetry.Rotate270: None, }
+      self.symmetries = {Symmetry.Horizontal: None,
+                         Symmetry.Vertical: None,
+                         Symmetry.Rotate90: None,
+                         Symmetry.Rotate180: None,
+                         Symmetry.Rotate270: None}
       return
 
-   def setNeighbour(self, direction, cell):
+   def setNeighbour(self, direction: Direction, cell: cell) -> None:
       self.neighbours[direction] = cell
       return
    
-   def setSymmetry(self, symmetry, cell):
+   def setSymmetry(self, symmetry: Symmetry, cell: 'Cell') -> None:
       self.symmetries[symmetry] = cell
       return
 
-   def neighbour(self, direction):
+   def neighbour(self, direction: Direction) -> 'Cell':
       return self.neighbours[direction]
 
-   def symmetry(self, symmetry):
+   def symmetry(self, symmetry: Symmetry) -> 'Cell':
       return self.symmetries[symmetry]
 
-   def wall(self, direction):
+   def wall(self, direction: Direction) -> Doorway:
       wall = self.walls[direction]
       if not wall:
          wall = Doorway.blocked
       return wall
 
-   def setWall(self, direction, wall):
+   def setWall(self, direction: Direction, wall: Doorway) -> None:
       self.walls[direction] = wall
       return
 
-   def setWalls(self, ligatures):
+   def setWalls(self, ligatures: str) -> None:
       if not ligatures or ligatures == "":
-         upper = "OOOO"
+         ligatures = "OOOO"
       else:
-         upper = ligatures.upper() + "OOO"
-      self.setWall(Direction.North, ligature2doorway(upper[0]))
-      self.setWall(Direction.East, ligature2doorway(upper[1]))
-      self.setWall(Direction.South, ligature2doorway(upper[2]))
-      self.setWall(Direction.West, ligature2doorway(upper[3]))
+         ligatures += "OOO"
+      self.setWall(Direction.North, ligature2doorway(ligatures[0]))
+      self.setWall(Direction.East, ligature2doorway(ligatures[1]))
+      self.setWall(Direction.South, ligature2doorway(ligatures[2]))
+      self.setWall(Direction.West, ligature2doorway(ligatures[3]))
       return
 
-   def empty(self): # test if only blocked or remove on all walls
-      empty = True
-      for d in Direction:
-         empty = empty and (self.wall(d) == Doorway.blocked or self.wall(d) == Doorway.removed)
-      return empty
+   def isEmpty(self) -> bool:
+      """
+      Test if only blocked or remove on all walls
+      :return: True iff all walls blocked or removed
+      """
+      isEmpty = True
+      for direction in Direction:
+         isEmpty = isEmpty and (self.wall(direction) == Doorway.blocked or self.wall(direction) == Doorway.removed)
+      return isEmpty
 
-   def changeWall(self, direction, wall, symmetries):
+   def changeWall(self, direction: Direction, wall: Doorway, symmetries: Symmetry) -> None:
       current = self.walls[direction]
       if not current:
          current = Doorway.blocked
       ### print("Calling changeWall:", self.x, self.y, direction.name, wall.name + ": current = ", current.name)
       if current != wall:
          # has changed, so change related walls
-         ### print("Changing:", self.x, self.y, "changeWall(", direction.name + ",", wall.name + ", symmetries): current = ", current.name)
+         ### print("Changing:", self.x, self.y, "changeWall(", direction.name + ",", wall.name + ", symmetries):
+         ### current = ", current.name)
          self.setWall(direction, wall)
          neighbour = self.neighbour(direction)
          if neighbour:
-            oppositeWall = Opposite(wall)
-            oppositeDirection = Opposite(direction)
+            oppositeWall = wall.opposite
+            oppositeDirection = direction.opposite
             ### print("set neighbour", neighbour.x, neighbour.y, oppositeDirection.name, oppositeWall.name)
             neighbour.setWall(oppositeDirection, oppositeWall)
          ### print("Checking symmetry:")
          ### print((symmetries & Symmetry.Horizontal))
-         if (symmetries & Symmetry.Horizontal):
+         if symmetries & Symmetry.Horizontal:
             paired = self.symmetry(Symmetry.Horizontal)
-            if (direction == Direction.East or direction == Direction.West):
-               oppositeDirection = Opposite(direction)
+            if direction == Direction.East or direction == Direction.West:
+               oppositeDirection = direction.opposite
             else:
-               oppositeDirection = direction # horizontal reflection does not effect vertical facing walls
+               oppositeDirection = direction  # horizontal reflection does not effect vertical facing walls
             ### print("paired:", paired.x, paired.y, Symmetry.Horizontal.name)
-            paired.changeWall(oppositeDirection, wall, Symmetry.No) # do neighbours, but not symmetries (to avoid infinite recursion)
+            # do neighbours, but not symmetries (to avoid infinite recursion)
+            paired.changeWall(oppositeDirection, wall, Symmetry.No)
          ### print((symmetries & Symmetry.Vertical))
-         if (symmetries & Symmetry.Vertical):
+         if symmetries & Symmetry.Vertical:
             paired = self.symmetry(Symmetry.Vertical)
-            if (direction == Direction.North or direction == Direction.South):
-               oppositeDirection = Opposite(direction)
+            if direction == Direction.North or direction == Direction.South:
+               oppositeDirection = direction.opposite
             else:
-               oppositeDirection = direction # horizontal reflection does not effect horizontal facing walls
+               oppositeDirection = direction  # horizontal reflection does not effect horizontal facing walls
             ### print("paired:", paired.x, paired.y, Symmetry.Vertical.name)
-            paired.changeWall(oppositeDirection, wall, Symmetry.No) # do neighbours, but not symmetries (to avoid infinite recursion)
+            # do neighbours, but not symmetries (to avoid infinite recursion)
+            paired.changeWall(oppositeDirection, wall, Symmetry.No)
          ### print((symmetries & Symmetry.Rotate180), "or", (symmetries & Symmetry.Rotate90))
-         if (symmetries & Symmetry.Rotate180) or (symmetries & Symmetry.Rotate90) or ((symmetries & Symmetry.Horizontal) and (symmetries & Symmetry.Vertical)):
+         if (symmetries & Symmetry.Rotate180) or (symmetries & Symmetry.Rotate90) or \
+                 ((symmetries & Symmetry.Horizontal) and (symmetries & Symmetry.Vertical)):
             # 90 maps 180 as well as 90 and 270 below, and Horizontal and Vertical together also hits 180 ...
             paired = self.symmetry(Symmetry.Rotate180)
-            oppositeDirection = Opposite(direction)
+            oppositeDirection = direction.opposite
             ### print("paired:", paired.x, paired.y, Symmetry.Rotate180.name, "or", Symmetry.Rotate90.name)
-            paired.changeWall(oppositeDirection, wall, Symmetry.No) # do neighbours, but not symmetries (to avoid infinite recursion)
+            # do neighbours, but not symmetries (to avoid infinite recursion)
+            paired.changeWall(oppositeDirection, wall, Symmetry.No)
          ### print((symmetries & Symmetry.Rotate90))
-         if (symmetries & Symmetry.Rotate90):
+         if symmetries & Symmetry.Rotate90:
             paired = self.symmetry(Symmetry.Rotate90)
             if paired:
-               rotatedDirection = Rotated(direction)
+               rotatedDirection = direction.cw
                ### print("paired:", paired.x, paired.y, Symmetry.Rotate90.name)
-               paired.changeWall(rotatedDirection, wall, Symmetry.No) # do neighbours, but not symmetries (to avoid infinite recursion)
+               # do neighbours, but not symmetries (to avoid infinite recursion)
+               paired.changeWall(rotatedDirection, wall, Symmetry.No)
             paired = self.symmetry(Symmetry.Rotate270)
             if paired:
-               rotatedDirection = Opposite(Rotated(direction))
+               rotatedDirection = direction.ccw
                ### print("paired:", paired.x, paired.y, Symmetry.Rotate270.name)
-               paired.changeWall(rotatedDirection, wall, Symmetry.No) # do neighbours, but not symmetries (to avoid infinite recursion)
+               # do neighbours, but not symmetries (to avoid infinite recursion)
+               paired.changeWall(rotatedDirection, wall, Symmetry.No)
          ### print("End symmetry check")
       return
 
-   def print(self):
-      # print the cell as unicode
-      # used to see the cell in debug, or display in textbox
+   def print(self) -> str:
+      """
+      Print the cell as unicode
+      Used to see the cell in debug, or display in textbox
+      :return: the cell as unicode
+      """
       knotCode = self.show()
       return ligatures2unicode(knotCode)
 
-   def show(self):
-      # show the cell as ligatures
-      # used the serialise the cell for load and save
+   def show(self) -> str:
+      """
+      Show the cell as ligatures
+      Used the serialise the cell for load and save
+      :return: the cell as ligatures
+      """
       knotCode = Ligature(self.wall(Direction.North)).name
       knotCode += Ligature(self.wall(Direction.East)).name
       knotCode += Ligature(self.wall(Direction.South)).name
@@ -128,5 +166,4 @@ class Cell:
 
 
 if __name__ == "__main__":
-   pass # no test code
-
+   pass  # no test code
