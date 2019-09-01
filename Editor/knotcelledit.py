@@ -51,10 +51,10 @@ class KnotCellEdit(Frame):
       chars = 0
       for door in self.doorways:
          chars = max(chars, len(door))
-      self.northwall = self.addCombo(self.frame, list(self.doorways), chars, 0, 1, self.changeNorthWall)
-      self.eastwall = self.addCombo(self.frame, list(self.doorways), chars, 1, 2, self.changeEastWall)
-      self.southwall = self.addCombo(self.frame, list(self.doorways), chars, 2, 1, self.changeSouthWall)
-      self.westwall = self.addCombo(self.frame, list(self.doorways), chars, 1, 0, self.changeWestWall)
+      self.northWall = self.addCombo(self.frame, list(self.doorways), chars, 0, 1, lambda event: self.changeNorthWall())
+      self.eastWall = self.addCombo(self.frame, list(self.doorways), chars, 1, 2, lambda event: self.changeEastWall())
+      self.southWall = self.addCombo(self.frame, list(self.doorways), chars, 2, 1, lambda event: self.changeSouthWall())
+      self.westWall = self.addCombo(self.frame, list(self.doorways), chars, 1, 0, lambda event: self.changeWestWall())
       self.reset()
       return
 
@@ -68,30 +68,26 @@ class KnotCellEdit(Frame):
    def reset(self):
       self.cell = None
       self.view["text"] = "O"
-      self.northwall.current(0)
-      self.eastwall.current(0)
-      self.southwall.current(0)
-      self.westwall.current(0)
+      self.northWall.current(0)
+      self.eastWall.current(0)
+      self.southWall.current(0)
+      self.westWall.current(0)
       return
 
-   # noinspection PyUnusedLocal
-   def changeNorthWall(self, event):
-      self.changeWall(Doorway[self.northwall.get()], Direction.North)
+   def changeNorthWall(self):
+      self.changeWall(Doorway[self.northWall.get()], Direction.North)
       return
 
-   # noinspection PyUnusedLocal
-   def changeEastWall(self, event):
-      self.changeWall(Doorway[self.eastwall.get()], Direction.East)
+   def changeEastWall(self):
+      self.changeWall(Doorway[self.eastWall.get()], Direction.East)
       return
         
-   # noinspection PyUnusedLocal
-   def changeSouthWall(self, event):
-      self.changeWall(Doorway[self.southwall.get()], Direction.South)
+   def changeSouthWall(self):
+      self.changeWall(Doorway[self.southWall.get()], Direction.South)
       return
         
-   # noinspection PyUnusedLocal
-   def changeWestWall(self, event):
-      self.changeWall(Doorway[self.westwall.get()], Direction.West)
+   def changeWestWall(self):
+      self.changeWall(Doorway[self.westWall.get()], Direction.West)
       return
         
    def changeWall(self, doorway, direction):
@@ -119,10 +115,10 @@ class KnotCellEdit(Frame):
       self.callback = callback
       self.symmetries = symmetries
       self.cell = selected
-      self.northwall.current(self.doorways.index(selected.wall(Direction.North).name))
-      self.eastwall.current(self.doorways.index(selected.wall(Direction.East).name))
-      self.southwall.current(self.doorways.index(selected.wall(Direction.South).name))
-      self.westwall.current(self.doorways.index(selected.wall(Direction.West).name))
+      self.northWall.current(self.doorways.index(selected.wall(Direction.North).name))
+      self.eastWall.current(self.doorways.index(selected.wall(Direction.East).name))
+      self.southWall.current(self.doorways.index(selected.wall(Direction.South).name))
+      self.westWall.current(self.doorways.index(selected.wall(Direction.West).name))
       self.show()
       return
 

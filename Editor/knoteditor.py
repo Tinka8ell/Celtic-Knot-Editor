@@ -72,6 +72,7 @@ class KnotEditor(Frame):
    def __init__(self, master=None):
       super().__init__(master)
       self.master = master
+      master.option_add('*tearOff', FALSE)
       self.master.title("Knot Editor")
       self.knot = None
       self.cellEditor = None
@@ -105,6 +106,36 @@ class KnotEditor(Frame):
       master.grid_rowconfigure(0, weight=1)
       frame.grid_columnconfigure(0, weight=1)
       frame.grid_rowconfigure(0, weight=1)
+
+      # Add menu items
+      menubar = Menu(frame)
+      frame['menu'] = menubar
+      menu_file = Menu(menubar)
+      menu_edit = Menu(menubar)
+      menubar.add_cascade(menu=menu_file, label='File', underline=0)
+      menubar.add_cascade(menu=menu_edit, label='Edit', underline=0)
+      menu_file.add_command(label='New', command=self.new, underline=0, accelerator="ctrl+N")
+      menu_file.add_command(label='Load...', command=self.load, underline=0, accelerator="ctrl+L")
+      menu_file.add_command(label='Save...', command=self.save, underline=0, accelerator="ctrl+S")
+      if CanGenerate:
+         menu_file.add_command(label='Generate', command=self.generate, underline=0, accelerator="ctrl+G")
+      menu_edit.add_command(label='Rotate', command=self.rotate, underline=0, accelerator="ctrl+R")
+      menu_file.add_separator()
+      menu_file.add_command(label='Exit', command=self.exit, underline=1, accelerator="ctrl+X")
+      menu_edit.add_command(label='Copy', command=self.copy, underline=0, accelerator="ctrl+C")
+      menu_edit.add_command(label='Delete', command=self.delete, underline=0, accelerator="ctrl+D")
+      menu_edit.add_command(label='Paste', command=self.paste, underline=0, accelerator="ctrl+V")
+      # Add keyboard short cuts
+      frame.bind("<Control-n>", lambda event: self.new())
+      frame.bind("<Control-l>", lambda event: self.load())
+      frame.bind("<Control-s>", lambda event: self.save())
+      if CanGenerate:
+         frame.bind("<Control-g>", lambda event: self.generate())
+      frame.bind("<Control-r>", lambda event: self.rotate())
+      frame.bind("<Control-x>", lambda event: self.exit())
+      frame.bind("<Control-c>", lambda event: self.copy())
+      frame.bind("<Control-d>", lambda event: self.delete())
+      frame.bind("<Control-v>", lambda event: self.paste())
 
       commonRow = 0
       commonCol = 0
@@ -164,8 +195,8 @@ class KnotEditor(Frame):
       self.size_font.set(self.fontSize)
       self.size_fEntry = ttk.Entry(self.size, textvariable=self.size_font, width=3)
       self.size_fEntry.grid(column=2, row=2, sticky=W)
-      self.size_fEntry.bind('<Key-Return>', self.fontSizeChanged)
-      self.size_fEntry.bind('<FocusOut>', self.fontSizeChanged)
+      self.size_fEntry.bind('<Key-Return>', lambda event: self.fontSizeChanged())
+      self.size_fEntry.bind('<FocusOut>', lambda event: self.fontSizeChanged())
       # symmetry
       self.symmetry = ttk.Labelframe(self.detailArea, text='Symmetry:')
       self.symmetry.grid(column=1, row=0, sticky=(N, E, W, S))
@@ -231,16 +262,16 @@ class KnotEditor(Frame):
       # buttons
       self.buttonStrip = Frame(frame) 
       self.buttonStrip.grid(column=buttonCol, row=buttonRow, columnspan=buttonWidth, sticky=(N, E, W, S))
-      self.buttonNew = Button(self.buttonStrip, text="New", command=self.new)
-      self.buttonLoad = Button(self.buttonStrip, text="Load", command=self.load)
-      self.buttonSave = Button(self.buttonStrip, text="Save", command=self.save)
-      self.buttonRotate = Button(self.buttonStrip, text="Rotate", command=self.rotate)
+      self.buttonNew = Button(self.buttonStrip, text="New", underline=0, command=self.new)
+      self.buttonLoad = Button(self.buttonStrip, text="Load", underline=0, command=self.load)
+      self.buttonSave = Button(self.buttonStrip, text="Save", underline=0, command=self.save)
+      self.buttonRotate = Button(self.buttonStrip, text="Rotate", underline=0, command=self.rotate)
       if CanGenerate:
-         self.buttonGen = Button(self.buttonStrip, text="Generate", command=self.generate)
-      self.buttonCopy = Button(self.buttonStrip, text="Copy", command=self.copy)
-      self.buttonDelete = Button(self.buttonStrip, text="Delete", command=self.delete)
-      self.buttonPaste = Button(self.buttonStrip, text="Paste", command=self.paste)
-      self.buttonQuit = Button(self.buttonStrip, text="Quit", command=self.quitCheck)
+         self.buttonGen = Button(self.buttonStrip, text="Generate", underline=0, command=self.generate)
+      self.buttonCopy = Button(self.buttonStrip, text="Copy", underline=0, command=self.copy)
+      self.buttonDelete = Button(self.buttonStrip, text="Delete", underline=0, command=self.delete)
+      self.buttonPaste = Button(self.buttonStrip, text="Paste", underline=0, command=self.paste)
+      self.buttonQuit = Button(self.buttonStrip, text="Exit", underline=1, command=self.exit)
       self.buttonNew.grid(column=0, row=0, pady=5, padx=5)
       self.buttonLoad.grid(column=1, row=0, pady=5, padx=5)
       self.buttonSave.grid(column=2, row=0, pady=5, padx=5)
@@ -284,8 +315,7 @@ class KnotEditor(Frame):
       self.text.configure(selectbackground=self.background, selectforeground=self.foreground)
       return
 
-   # noinspection PyUnusedLocal
-   def fontSizeChanged(self, event):
+   def fontSizeChanged(self):
       size = self.size_font.get()
       if size != self.fontSize:
          self.fontSize = size
@@ -350,7 +380,7 @@ class KnotEditor(Frame):
          self.cellEditor.reset()  # so cell editor picks up changes
       return
 
-   def quitCheck(self):
+   def exit(self):
       if not self.saved:
          response = KnotConfirm("Unsaved knot! \nDo you want to quit without saving it?")
          if response:
@@ -588,15 +618,15 @@ class KnotEditor(Frame):
       rows = self.toy - self.y + 1
       self.clip = []
       for y in range(rows):
-         thisrow = []
+         thisRow = []
          for x in range(cols):
             cell = Cell(x, y)
             source = self.knot.cell(x + col, y + row)
             # copy the walls to new clip cell
             for d in Direction:
                cell.setWall(d, source.wall(d))
-            thisrow.append(cell)
-         self.clip.append(thisrow)
+            thisRow.append(cell)
+         self.clip.append(thisRow)
       # now have a copy of cell walls in clip
       return
 
