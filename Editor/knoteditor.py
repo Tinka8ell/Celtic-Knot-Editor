@@ -197,6 +197,18 @@ class KnotEditor(Frame):
       self.size_fEntry.grid(column=2, row=2, sticky=W)
       self.size_fEntry.bind('<Key-Return>', lambda event: self.fontSizeChanged())
       self.size_fEntry.bind('<FocusOut>', lambda event: self.fontSizeChanged())
+      self.size_sLabel = Label(self.size, text="Straights Balance:")
+      self.size_sLabel.grid(column=1, row=3, sticky=E)
+      self.straightsBalance = IntVar()
+      self.straightsBalance.set(0)
+      self.size_sEntry = ttk.Entry(self.size, textvariable=self.straightsBalance, width=4)
+      self.size_sEntry.grid(column=2, row=3, sticky=W)
+      self.size_zLabel = Label(self.size, text="Zoomorph Balance:")
+      self.size_zLabel.grid(column=1, row=4, sticky=E)
+      self.zoomorphBalance = IntVar()
+      self.zoomorphBalance.set(0)
+      self.size_zEntry = ttk.Entry(self.size, textvariable=self.zoomorphBalance, width=4)
+      self.size_zEntry.grid(column=2, row=4, sticky=W)
       # symmetry
       self.symmetry = ttk.Labelframe(self.detailArea, text='Symmetry:')
       self.symmetry.grid(column=1, row=0, sticky=(N, E, W, S))
@@ -510,6 +522,7 @@ class KnotEditor(Frame):
       self.knot = knot
       self.size_width.set(knot.width)
       self.size_height.set(knot.height)
+      self.updateStats()
       self.show()
       return
 
@@ -646,6 +659,7 @@ class KnotEditor(Frame):
                for d in Direction:
                   cell.setWall(d, Doorway.blocked)
       self.saved = False
+      self.updateStats()
       self.show()
       return
 
@@ -681,12 +695,14 @@ class KnotEditor(Frame):
                      for d in Direction:
                         dest.setWall(d, cell.wall(d))
       self.saved = False
+      self.updateStats()
       self.show()
       return
 
    def cellChanged(self):
       self.show()
       self.saved = False
+      self.updateStats()
       self.text.see(self.pos)  # make sure what we changed is visible!
       return
 
@@ -702,7 +718,37 @@ class KnotEditor(Frame):
 
    def setHeight(self, number):
       self.size_height.set(number)
-      return 
+      return
+
+   def updateStats(self):
+      knot = self.knot
+      counts = {Doorway.blocked: 0, Doorway.crossed: 0, Doorway.straight: 0, Doorway.head: 0, Doorway.beak: 0}
+      for y in range(knot.height):
+         for x in range(knot.width):
+            cell = knot.cell(x, y)
+            for direction in Direction:
+               wall = cell.walls[direction]
+               if wall == Doorway.crossed:
+                  counts[Doorway.straight.crossed] += 1
+               if wall == Doorway.head:
+                  counts[Doorway.straight.head] += 1
+               if wall == Doorway.beak:
+                  counts[Doorway.straight.beak] += 1
+               if wall == Doorway.straight or wall == Doorway.platted:
+                  counts[Doorway.straight.straight] += 1
+      # Straights Balance. This is a value between 0 and 1000. 0 = All twists, 1000=all straights.
+      zoomorphs = counts[Doorway.head] + counts[Doorway.beak]
+      crossed = zoomorphs + counts[Doorway.crossed]
+      if crossed > 0:
+         self.zoomorphBalance.set(int((zoomorphs * 1000) / crossed))
+      else:
+         self.zoomorphBalance.set(0)
+      notBlocked = counts[Doorway.straight] + crossed
+      if notBlocked > 0:
+         self.straightsBalance.set(int((counts[Doorway.straight] * 1000) / notBlocked))
+      else:
+         self.straightsBalance.set(0)
+      return
 
 
 if __name__ == "__main__":
